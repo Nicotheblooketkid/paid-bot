@@ -386,13 +386,27 @@ def single_check(session, variant):
     url = f"https://horizon.meta.com/profile/{variant}/"
     try:
         r = session.get(url, allow_redirects=False, timeout=10)
-        loc = r.headers.get("Location", "")
-        if r.status_code == 200:
+        status = r.status_code
+        loc = r.headers.get("Location", "").rstrip("/")
+
+        # 200 = profile page exists = TAKEN
+        if status == 200:
             return "TAKEN"
-        if r.status_code in (301, 302):
-            if loc == "https://horizon.meta.com/":
+
+        # redirect to exact homepage = username not found = AVAILABLE
+        if status in (301, 302, 303, 307, 308):
+            if loc in ("https://horizon.meta.com", "https://horizon.meta.com/"):
                 return "AVAILABLE"
+            # redirect to a login or other page = inconclusive
+            if "login" in loc or "auth" in loc:
+                return None
+            # redirect to another profile = TAKEN
             return "TAKEN"
+
+        # 404 = not found = AVAILABLE
+        if status == 404:
+            return "AVAILABLE"
+
     except Exception:
         pass
     return None
@@ -402,20 +416,8 @@ def check_username_sync(name):
     if not name:
         return name, "SKIP"
     session = requests.Session()
-    result = single_check(session, name)
-    if result == "TAKEN":
-        return name, "TAKEN"
-    if result == "AVAILABLE":
-        for variant in cap_variants(name):
-            if variant == name:
-                continue
-            r = single_check(session, variant)
-            if r == "TAKEN":
-                return name, "TAKEN"
-        return name, "AVAILABLE"
+    # Check every cap variant — if ANY is taken, the name is taken
     for variant in cap_variants(name):
-        if variant == name:
-            continue
         r = single_check(session, variant)
         if r == "TAKEN":
             return name, "TAKEN"
@@ -470,7 +472,12 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
         return
 
     raw = await file.read()
-    usernames = [l.strip().lstrip("@") for l in raw.decode("utf-8", errors="ignore").splitlines() if l.strip()]
+    usernames = []
+    for l in raw.decode("utf-8", errors="ignore").splitlines():
+        for name in l.split():
+            name = name.strip().lstrip("@").strip()
+            if name and not name.startswith("#"):
+                usernames.append(name)
 
     if not usernames:
         await interaction.response.send_message("No usernames found in the file.", ephemeral=True)
