@@ -508,19 +508,8 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
 
     pos = checker_queue.qsize() + 1
     await checker_queue.put((interaction, usernames, interaction.channel))
-
-    instructions = (
-        "**How to use /checker:**\n"
-        "• Create a `.txt` file with one username per line\n"
-        "• Upload it using `/checker` and attach the file\n"
-        "• The bot checks each name on **horizon.meta.com**\n"
-        "• It also checks capitalization variants (e.g. `name`, `Name`, `NAME`)\n"
-        "• Names 6 chars or less get every possible cap combo checked\n"
-        "• Results are posted publicly with `available.txt` and `taken.txt`\n"
-        f"• Free users: max **{CHECKER_MAX_FREE} usernames** per 10 minutes\n"
-    )
     await interaction.response.send_message(
-        f"{instructions}\nAdded to queue — position **#{pos}**. Checking **{len(usernames)}** username(s). Results will be posted here when done.",
+        f"Added to queue — position **#{pos}**. Checking **{len(usernames)}** username(s). Results will be posted here when done.",
         ephemeral=False
     )
 
