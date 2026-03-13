@@ -361,80 +361,51 @@ async def addaccounts(interaction: discord.Interaction, tier: str, accounts: str
 
 
 # ============================================
-# /checker  (paid + admin only)
+# CHECKER QUEUE SYSTEM
 # ============================================
 
-@tree.command(name="checker", description="Check a list of usernames for availability on Meta/Horizon")
-@app_commands.describe(file="A .txt file with one username per line")
-async def checker(interaction: discord.Interaction, file: discord.Attachment):
-    if not interaction.guild:
-        await interaction.response.send_message("Use this command in the server.", ephemeral=True)
-        return
-    if not (is_paid(interaction.user) or is_admin(interaction.user)):
-        await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
-        return
-    if not file.filename.endswith(".txt"):
-        await interaction.response.send_message("Please upload a **.txt** file.", ephemeral=True)
-        return
+import io
+import collections
 
-    await interaction.response.defer(ephemeral=True)
+CHECKER_MAX_FREE     = 200   # max names per 10 min window for free users
+CHECKER_WINDOW       = 600   # 10 minutes
+checker_queue        = asyncio.Queue()
+checker_usage        = {}    # user_id -> {"count": int, "window_start": float}
+checker_queue_running = False
 
-    import re
-    import itertools
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+def cap_variants(name):
+    seen = set()
+    seen.add(name)
+    yield name
+    for v in {name.lower(), name.upper(), name.capitalize()}:
+        if v not in seen:
+            seen.add(v)
+            yield v
 
-    raw = await file.read()
-    usernames = [l.strip().lstrip("@") for l in raw.decode("utf-8", errors="ignore").splitlines() if l.strip()]
+def single_check(session, variant):
+    url = f"https://horizon.meta.com/profile/{variant}/"
+    try:
+        r = session.get(url, allow_redirects=False, timeout=10)
+        loc = r.headers.get("Location", "")
+        if r.status_code == 200:
+            return "TAKEN"
+        if r.status_code in (301, 302):
+            if loc == "https://horizon.meta.com/":
+                return "AVAILABLE"
+            return "TAKEN"
+    except Exception:
+        pass
+    return None
 
-    if not usernames:
-        await interaction.followup.send("No usernames found in the file.", ephemeral=True)
-        return
-    if len(usernames) > 500:
-        await interaction.followup.send("Max **500 usernames** per check.", ephemeral=True)
-        return
-
-    await interaction.followup.send(f"Checking **{len(usernames)}** username(s)... this may take a moment.", ephemeral=True)
-
-    def cap_variants(name):
-        seen = set()
-        seen.add(name)
-        yield name
-        for v in {name.lower(), name.upper(), name.capitalize()}:
-            if v not in seen:
-                seen.add(v)
-                yield v
-
-    def single_check(session, variant):
-        url = f"https://horizon.meta.com/profile/{variant}/"
-        try:
-            r = session.get(url, allow_redirects=False, timeout=10)
-            loc = r.headers.get("Location", "")
-            if r.status_code == 200:
-                return "TAKEN"
-            if r.status_code in (301, 302):
-                if loc == "https://horizon.meta.com/":
-                    return "AVAILABLE"
-                return "TAKEN"
-        except Exception:
-            pass
-        return None
-
-    def check_username(name):
-        name = name.strip().lstrip("@")
-        if not name:
-            return name, "SKIP"
-        session = requests.Session()
-        result = single_check(session, name)
-        if result == "TAKEN":
-            return name, "TAKEN"
-        if result == "AVAILABLE":
-            for variant in cap_variants(name):
-                if variant == name:
-                    continue
-                r = single_check(session, variant)
-                if r == "TAKEN":
-                    return name, "TAKEN"
-            return name, "AVAILABLE"
+def check_username_sync(name):
+    name = name.strip().lstrip("@")
+    if not name:
+        return name, "SKIP"
+    session = requests.Session()
+    result = single_check(session, name)
+    if result == "TAKEN":
+        return name, "TAKEN"
+    if result == "AVAILABLE":
         for variant in cap_variants(name):
             if variant == name:
                 continue
@@ -442,31 +413,120 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
             if r == "TAKEN":
                 return name, "TAKEN"
         return name, "AVAILABLE"
+    for variant in cap_variants(name):
+        if variant == name:
+            continue
+        r = single_check(session, variant)
+        if r == "TAKEN":
+            return name, "TAKEN"
+    return name, "AVAILABLE"
 
-    loop = asyncio.get_event_loop()
-    results = await loop.run_in_executor(
-        None,
-        lambda: list(map(check_username, usernames))
+async def run_checker_queue():
+    global checker_queue_running
+    checker_queue_running = True
+    while not checker_queue.empty():
+        interaction, usernames, channel = await checker_queue.get()
+        try:
+            loop = asyncio.get_event_loop()
+            results = await loop.run_in_executor(None, lambda u=usernames: list(map(check_username_sync, u)))
+
+            available = [name for name, status in results if status == "AVAILABLE"]
+            taken     = [name for name, status in results if status == "TAKEN"]
+
+            available_file = discord.File(io.BytesIO("\n".join(available).encode() if available else b"None"), filename="available.txt")
+            taken_file     = discord.File(io.BytesIO("\n".join(taken).encode() if taken else b"None"),     filename="taken.txt")
+
+            embed = discord.Embed(title="Username Checker Results", color=0xFFFFFF)
+            embed.add_field(name="✅ Available", value=f"**{len(available)}**", inline=True)
+            embed.add_field(name="🔒 Taken",     value=f"**{len(taken)}**",     inline=True)
+            embed.add_field(name="Total",        value=f"**{len(usernames)}**", inline=True)
+            embed.set_footer(text=f"WR Gen • requested by {interaction.user.display_name}")
+
+            await channel.send(f"{interaction.user.mention} your check is done!", embed=embed, files=[available_file, taken_file])
+        except Exception as e:
+            try:
+                await channel.send(f"{interaction.user.mention} checker error: {e}")
+            except Exception:
+                pass
+        checker_queue.task_done()
+    checker_queue_running = False
+
+# ============================================
+# /checker  (free + paid + admin)
+# ============================================
+
+@tree.command(name="checker", description="Check a list of usernames for availability on Meta/Horizon")
+@app_commands.describe(file="A .txt file with one username per line")
+async def checker(interaction: discord.Interaction, file: discord.Attachment):
+    global checker_queue_running
+    if not interaction.guild:
+        await interaction.response.send_message("Use this command in the server.", ephemeral=True)
+        return
+    if not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
+        await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
+        return
+    if not file.filename.endswith(".txt"):
+        await interaction.response.send_message("Please upload a **.txt** file.", ephemeral=True)
+        return
+
+    raw = await file.read()
+    usernames = [l.strip().lstrip("@") for l in raw.decode("utf-8", errors="ignore").splitlines() if l.strip()]
+
+    if not usernames:
+        await interaction.response.send_message("No usernames found in the file.", ephemeral=True)
+        return
+
+    # Free users: enforce 200 name / 10 min limit
+    admin = is_admin(interaction.user)
+    paid  = is_paid(interaction.user)
+    if not admin and not paid:
+        user_id = str(interaction.user.id)
+        now     = time.time()
+        ud      = checker_usage.get(user_id, {"count": 0, "window_start": now})
+        if now - ud["window_start"] >= CHECKER_WINDOW:
+            ud = {"count": 0, "window_start": now}
+        remaining_quota = CHECKER_MAX_FREE - ud["count"]
+        if remaining_quota <= 0:
+            wait = int(CHECKER_WINDOW - (now - ud["window_start"]))
+            mins, secs = divmod(wait, 60)
+            await interaction.response.send_message(
+                f"You've hit your **{CHECKER_MAX_FREE} username** limit for this window. Try again in **{mins}m {secs}s**.", ephemeral=True
+            )
+            return
+        if len(usernames) > remaining_quota:
+            await interaction.response.send_message(
+                f"Your file has **{len(usernames)}** names but you only have **{remaining_quota}** checks left this window. Trim your list and try again.", ephemeral=True
+            )
+            return
+        ud["count"] += len(usernames)
+        checker_usage[user_id] = ud
+    else:
+        # paid/admin: still cap at 2000 to avoid abuse
+        if len(usernames) > 2000:
+            await interaction.response.send_message("Max **2000 usernames** per check.", ephemeral=True)
+            return
+
+    pos = checker_queue.qsize() + 1
+    await checker_queue.put((interaction, usernames, interaction.channel))
+
+    instructions = (
+        "**How to use /checker:**\n"
+        "• Create a `.txt` file with one username per line\n"
+        "• Upload it using `/checker` and attach the file\n"
+        "• The bot checks each name on **horizon.meta.com**\n"
+        "• It also checks capitalization variants (e.g. `name`, `Name`, `NAME`)\n"
+        "• Names 6 chars or less get every possible cap combo checked\n"
+        "• Results are posted publicly with `available.txt` and `taken.txt`\n"
+        f"• Free users: max **{CHECKER_MAX_FREE} usernames** per 10 minutes\n"
+    )
+    await interaction.response.send_message(
+        f"{instructions}\nAdded to queue — position **#{pos}**. Checking **{len(usernames)}** username(s). Results will be posted here when done.",
+        ephemeral=False
     )
 
-    available = [name for name, status in results if status == "AVAILABLE"]
-    taken = [name for name, status in results if status == "TAKEN"]
+    if not checker_queue_running:
+        asyncio.create_task(run_checker_queue())
 
-    # Build result files
-    available_text = "\n".join(available) if available else "None"
-    taken_text = "\n".join(taken) if taken else "None"
-
-    import io
-    available_file = discord.File(io.BytesIO(available_text.encode()), filename="available.txt")
-    taken_file = discord.File(io.BytesIO(taken_text.encode()), filename="taken.txt")
-
-    embed = discord.Embed(title="Username Checker Results", color=0xFFFFFF)
-    embed.add_field(name="✅ Available", value=f"**{len(available)}**", inline=True)
-    embed.add_field(name="🔒 Taken", value=f"**{len(taken)}**", inline=True)
-    embed.add_field(name="Total Checked", value=f"**{len(usernames)}**", inline=True)
-    embed.set_footer(text="WR Gen")
-
-    await interaction.followup.send(embed=embed, files=[available_file, taken_file], ephemeral=True)
 
 # ============================================
 # RUN
