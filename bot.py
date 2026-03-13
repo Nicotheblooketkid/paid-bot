@@ -11,7 +11,7 @@ import requests
 # CONFIG
 # ============================================
 
-BOT_TOKEN = "MTQ4MTgzODg2NzQzNzk3Nzc5Mg.GOdz5k.osClkiuZqrNSGOm27JTLVAL3LEyREDfjgt21QA"
+BOT_TOKEN = "MTQ4MTgzODg2NzQzNzk3Nzc5Mg.G1Kz0F.LP_rFvKB8jbI1Lk7qgs_FJEhJA4b4_WXuC9ny8"
 CLIENT_ID = "1481838867437977792"
 ACCOUNTS_FILE = "meta_accounts.txt"
 USED_FILE = "used_accounts.txt"
