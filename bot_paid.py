@@ -374,12 +374,21 @@ checker_usage        = {}    # user_id -> {"count": int, "window_start": float}
 checker_queue_running = False
 
 def cap_variants(name):
+    import itertools
     seen = set()
-    seen.add(name)
-    yield name
-    for v in {name.lower(), name.upper(), name.capitalize()}:
+    def _yield(v):
         if v not in seen:
             seen.add(v)
+            return True
+        return False
+    # Always check these basic ones
+    for v in [name, name.lower(), name.upper(), name.capitalize()]:
+        if _yield(v):
+            yield v
+    # Every possible cap combo
+    for combo in itertools.product([0, 1], repeat=len(name)):
+        v = "".join(c.upper() if combo[i] else c.lower() for i, c in enumerate(name))
+        if _yield(v):
             yield v
 
 def single_check(session, variant):
