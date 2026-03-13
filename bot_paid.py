@@ -148,18 +148,26 @@ async def give_account(interaction, tier_label):
 
     email, password = account.split(':', 1)
 
+    instructions = (
+        "• Go to **secure.oculus.com** or the Meta Quest app\n"
+        "• Login with the credentials provided by the bot\n"
+        "• If it asks for a code do **/inbox** to get code, change email/pass if u want\n"
+        "• Upload the picture of the old guy for selfie verification"
+        if tier_label == "free" else
+        "• Go to **secure.oculus.com** or the Meta Quest app\n"
+        "• Login with the credentials provided by the bot\n"
+        "• If it asks for a code do **/inbox** to get code, change email/pass if u want"
+    )
     embed = discord.Embed(title="Meta / Oculus Account", color=0xFFFFFF)
     embed.add_field(name="**Email**", value=f"`{email}`", inline=False)
     embed.add_field(name="**Password**", value=f"`{password}`", inline=False)
-    embed.add_field(
-        name="**Instructions**",
-        value="• Go to **secure.oculus.com** or the Meta Quest app\n• Login with the credentials provided by the bot\n• If it asks for a code do **/inbox** to get code, change email/pass if u want",
-        inline=False
-    )
+    embed.add_field(name="**Instructions**", value=instructions, inline=False)
     embed.set_footer(text="WR Gen")
 
     try:
         await user.send(embed=embed)
+        if tier_label == "free":
+            await user.send("https://media.discordapp.net/attachments/1480766903243767910/1481851689672773642/senior-caucasian-man-happy-selfie.png?ex=69b4d16e&is=69b37fee&hm=715f9ff6bdc1eded660b90bbb5d2b6288be451b42095a12b1d42d82a54b14fb6&=&format=webp&quality=lossless")
         await interaction.followup.send("Account sent to your **DMs**.", ephemeral=True)
     except discord.Forbidden:
         await interaction.followup.send(
@@ -350,6 +358,115 @@ async def addaccounts(interaction: discord.Interaction, tier: str, accounts: str
             f.write(line + '\n')
 
     await interaction.response.send_message(f"Added **{len(lines)}** account(s) to **{tier}** stock.", ephemeral=True)
+
+
+# ============================================
+# /checker  (paid + admin only)
+# ============================================
+
+@tree.command(name="checker", description="Check a list of usernames for availability on Meta/Horizon")
+@app_commands.describe(file="A .txt file with one username per line")
+async def checker(interaction: discord.Interaction, file: discord.Attachment):
+    if not interaction.guild:
+        await interaction.response.send_message("Use this command in the server.", ephemeral=True)
+        return
+    if not (is_paid(interaction.user) or is_admin(interaction.user)):
+        await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
+        return
+    if not file.filename.endswith(".txt"):
+        await interaction.response.send_message("Please upload a **.txt** file.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    import re
+    import itertools
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    raw = await file.read()
+    usernames = [l.strip().lstrip("@") for l in raw.decode("utf-8", errors="ignore").splitlines() if l.strip()]
+
+    if not usernames:
+        await interaction.followup.send("No usernames found in the file.", ephemeral=True)
+        return
+    if len(usernames) > 500:
+        await interaction.followup.send("Max **500 usernames** per check.", ephemeral=True)
+        return
+
+    await interaction.followup.send(f"Checking **{len(usernames)}** username(s)... this may take a moment.", ephemeral=True)
+
+    def cap_variants(name):
+        seen = set()
+        seen.add(name)
+        yield name
+        for v in {name.lower(), name.upper(), name.capitalize()}:
+            if v not in seen:
+                seen.add(v)
+                yield v
+
+    def single_check(session, variant):
+        url = f"https://horizon.meta.com/profile/{variant}/"
+        try:
+            r = session.get(url, allow_redirects=False, timeout=10)
+            loc = r.headers.get("Location", "")
+            if r.status_code == 200:
+                return "TAKEN"
+            if r.status_code in (301, 302):
+                if loc == "https://horizon.meta.com/":
+                    return "AVAILABLE"
+                return "TAKEN"
+        except Exception:
+            pass
+        return None
+
+    def check_username(name):
+        name = name.strip().lstrip("@")
+        if not name:
+            return name, "SKIP"
+        session = requests.Session()
+        result = single_check(session, name)
+        if result == "TAKEN":
+            return name, "TAKEN"
+        if result == "AVAILABLE":
+            for variant in cap_variants(name):
+                if variant == name:
+                    continue
+                r = single_check(session, variant)
+                if r == "TAKEN":
+                    return name, "TAKEN"
+            return name, "AVAILABLE"
+        for variant in cap_variants(name):
+            if variant == name:
+                continue
+            r = single_check(session, variant)
+            if r == "TAKEN":
+                return name, "TAKEN"
+        return name, "AVAILABLE"
+
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(
+        None,
+        lambda: list(map(check_username, usernames))
+    )
+
+    available = [name for name, status in results if status == "AVAILABLE"]
+    taken = [name for name, status in results if status == "TAKEN"]
+
+    # Build result files
+    available_text = "\n".join(available) if available else "None"
+    taken_text = "\n".join(taken) if taken else "None"
+
+    import io
+    available_file = discord.File(io.BytesIO(available_text.encode()), filename="available.txt")
+    taken_file = discord.File(io.BytesIO(taken_text.encode()), filename="taken.txt")
+
+    embed = discord.Embed(title="Username Checker Results", color=0xFFFFFF)
+    embed.add_field(name="✅ Available", value=f"**{len(available)}**", inline=True)
+    embed.add_field(name="🔒 Taken", value=f"**{len(taken)}**", inline=True)
+    embed.add_field(name="Total Checked", value=f"**{len(usernames)}**", inline=True)
+    embed.set_footer(text="WR Gen")
+
+    await interaction.followup.send(embed=embed, files=[available_file, taken_file], ephemeral=True)
 
 # ============================================
 # RUN
