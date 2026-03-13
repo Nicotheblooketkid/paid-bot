@@ -510,8 +510,10 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
             )
             return
         if len(usernames) > remaining_quota:
+            wait = int(CHECKER_WINDOW - (now - ud["window_start"]))
+            mins, secs = divmod(wait, 60)
             await interaction.response.send_message(
-                f"Your file has **{len(usernames)}** names but you only have **{remaining_quota}** checks left this window. Trim your list and try again.", ephemeral=True
+                f"Your file has **{len(usernames)}** names but you only have **{remaining_quota}** checks left this window. Resets in **{mins}m {secs}s**.", ephemeral=True
             )
             return
         ud["count"] += len(usernames)
