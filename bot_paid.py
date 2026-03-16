@@ -162,7 +162,7 @@ async def give_account(interaction, tier_label):
     embed.add_field(name="**Email**", value=f"`{email}`", inline=False)
     embed.add_field(name="**Password**", value=f"`{password}`", inline=False)
     embed.add_field(name="**Instructions**", value=instructions, inline=False)
-    embed.set_footer(text="WR Gen")
+    embed.set_footer(text="meta bot - WR")
 
     try:
         await user.send(embed=embed)
@@ -235,7 +235,7 @@ async def stock_free(interaction: discord.Interaction):
     embed = discord.Embed(title="Account Stock", color=0xFFFFFF)
     embed.add_field(name="Free Stock", value=f"**{free_count}** account(s)", inline=True)
     embed.add_field(name="Paid Stock", value=f"**{paid_count}** account(s)", inline=True)
-    embed.set_footer(text="WR Gen")
+    embed.set_footer(text="meta bot - WR")
     await interaction.response.send_message(embed=embed)
 
 # ============================================
@@ -325,7 +325,7 @@ async def inbox(interaction: discord.Interaction, email: str = None):
     for msg in meta_emails[:3]:
         subject = msg.get('mail_subject', 'No subject')
         embed.add_field(name=subject, value=f"**From:** {msg.get('mail_from', '')}", inline=False)
-    embed.set_footer(text="WR Gen")
+    embed.set_footer(text="meta bot - WR")
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 # ============================================
@@ -561,7 +561,7 @@ async def username_search(interaction: discord.Interaction, username: str):
         payload = {
             "doc_id": "8099807633384096",
             "operation_name": "SocialSearchQuery",
-            "variables": _json.dumps({"query_data": {"query_string": uname, "search_mode": "ID"}}),
+            "variables": _json.dumps({"query_data": {"query_string": uname}}),
             "forced_locale": "en_US",
         }
         try:
@@ -597,7 +597,7 @@ async def username_search(interaction: discord.Interaction, username: str):
 
     if not show:
         embed = discord.Embed(title="No Results", description="No users found for **" + username + "**", color=0xFF0000)
-        embed.set_footer(text="WR Gen")
+        embed.set_footer(text="meta bot - WR")
         await interaction.followup.send(embed=embed)
         return
 
@@ -620,7 +620,7 @@ async def username_search(interaction: discord.Interaction, username: str):
         embed.add_field(name="Following", value=str(following), inline=True)
         if pfp:
             embed.set_thumbnail(url=pfp)
-        embed.set_footer(text="WR Gen")
+        embed.set_footer(text="meta bot - WR")
     else:
         embed = discord.Embed(title="Similar Users", description="No exact match for **" + username + "**", color=0xFFAA00)
         for i, edge in enumerate(show):
@@ -629,7 +629,7 @@ async def username_search(interaction: discord.Interaction, username: str):
             uid = user.get("user_id", "Unknown")
             mutual = user.get("mutual_friends", {}).get("count", 0)
             embed.add_field(name=str(i+1) + ". " + name, value="ID: " + uid + "\nMutual Friends: " + str(mutual), inline=True)
-        embed.set_footer(text="WR Gen")
+        embed.set_footer(text="meta bot - WR")
 
     await interaction.followup.send(embed=embed)
 
