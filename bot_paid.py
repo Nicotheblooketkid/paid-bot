@@ -540,46 +540,9 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
 # /username-search  (paid + admin only)
 # ============================================
 
-ACCESS_TOKENS = [    "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",]
+ACCESS_TOKENS = ['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']
+
+@tree.command(name="username-search", description="Search for a Meta/Oculus username using the API")
 @app_commands.describe(username="The username to search for")
 async def username_search(interaction: discord.Interaction, username: str):
     if not interaction.guild:
@@ -588,56 +551,82 @@ async def username_search(interaction: discord.Interaction, username: str):
     if not (is_paid(interaction.user) or is_admin(interaction.user)):
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
-
     await interaction.response.defer(ephemeral=False)
+    import random as _random, json as _json
 
-    import random as _random
-
-    def do_search(username):
+    def do_search(uname):
         token = _random.choice(ACCESS_TOKENS)
-        url = "https://graph.oculus.com/graphql"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
+        url = "https://graph.oculus.com/graphql?forced_locale=en_US"
+        headers = {"Authorization": f"OAuth {token}", "Content-Type": "application/x-www-form-urlencoded"}
         payload = {
-            "doc_id": "7555379627874695",
-            "variables": f'{{"query":"{username}","limit":10}}',
+            "doc_id": "8099807633384096",
+            "operation_name": "SocialSearchQuery",
+            "variables": _json.dumps({"query_data": {"query_string": uname, "search_mode": "ID"}}),
+            "forced_locale": "en_US",
         }
         try:
-            r = requests.post(url, headers=headers, data=payload, timeout=10)
-            return r.json()
+            r = requests.post(url, data=payload, headers=headers, timeout=15)
+            data = r.json()
+            edges = data.get("data", {}).get("search", {}).get("results", {}).get("edges", [])
+            exact = [e for e in edges if e.get("node", {}).get("search_name", "").lower() == uname.lower()]
+            return {"edges": edges, "exact": exact}
         except Exception as e:
-            return {"error": str(e)}
+            return {"edges": [], "exact": [], "error": str(e)}
+
+    def fetch_follow_count(token, user_id, follow_type):
+        url = "https://graph.oculus.com/graphql"
+        headers = {"Authorization": f"OAuth {token}", "Content-Type": "application/x-www-form-urlencoded"}
+        doc_id = "5982715498405749" if follow_type == "followers" else "5790509797674020"
+        op = "ProfileUserFollowersListQuery" if follow_type == "followers" else "UserProfileFollowsListPagingQuery"
+        payload = {"doc_id": doc_id, "operation_name": op, "variables": _json.dumps({"count": 20, "cursor": None, "userId": user_id})}
+        try:
+            r = requests.post(url, data=payload, headers=headers, timeout=10)
+            data = r.json()
+            node = data.get("data", {}).get("node", {}) or data.get("data", {}).get("user", {})
+            key = "followers" if follow_type == "followers" else "follows"
+            return node.get(key, {}).get("count", 0)
+        except Exception:
+            return 0
 
     loop = asyncio.get_event_loop()
-    data = await loop.run_in_executor(None, do_search, username)
+    token = _random.choice(ACCESS_TOKENS)
+    result = await loop.run_in_executor(None, do_search, username)
+    exact = result.get("exact", [])
+    edges = result.get("edges", [])
+    show = exact if exact else edges[:3]
 
-    # Parse results
-    try:
-        edges = data["data"]["xfb_user_search"]["edges"]
-    except (KeyError, TypeError):
-        edges = []
-
-    if not edges:
-        embed = discord.Embed(title=f"Username Search: {username}", description="No results found.", color=0xFFFFFF)
+    if not show:
+        embed = discord.Embed(title="No Results", description="No users found for **" + username + "**", color=0xFF0000)
         embed.set_footer(text="WR Gen")
         await interaction.followup.send(embed=embed)
         return
 
-    embed = discord.Embed(title=f"Username Search: {username}", color=0xFFFFFF)
-    for edge in edges[:10]:
-        node = edge.get("node", {})
-        display = node.get("display_name", "N/A")
-        uname   = node.get("alias", node.get("username", "N/A"))
-        uid     = node.get("id", "N/A")
-        embed.add_field(
-            name=display,
-            value=f"**Username:** `{uname}`\n**ID:** `{uid}`",
-            inline=False
-        )
-    embed.set_footer(text=f"WR Gen • {len(edges)} result(s)")
+    if exact:
+        user = exact[0]["node"]
+        user_id = user.get("user_id", "N/A")
+        search_name = user.get("search_name", "N/A")
+        friend_status = user.get("friend_status", "unknown").replace("_", " ")
+        pfp = user.get("profile_photo", {}).get("uri", None)
+        embed = discord.Embed(title="Oculus User Found", description="Exact match: **@" + username + "**", color=0x0085FF)
+        embed.add_field(name="Username", value="👤 " + search_name, inline=True)
+        embed.add_field(name="User ID", value="🆔 " + user_id, inline=True)
+        embed.add_field(name="Friend Status", value="🤝 " + friend_status, inline=True)
+        if pfp:
+            embed.set_thumbnail(url=pfp)
+        followers = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "followers")
+        following = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "following")
+        embed.add_field(name="Followers", value="👥 " + str(followers), inline=True)
+        embed.add_field(name="Following", value="👤 " + str(following), inline=True)
+    else:
+        embed = discord.Embed(title="Similar Users Found", description="No exact match for **" + username + "**:", color=0xFFAA00)
+        for i, edge in enumerate(show):
+            user = edge.get("node", {})
+            name = user.get("search_name", "Unknown")
+            uid = user.get("user_id", "Unknown")
+            mutual = user.get("mutual_friends", {}).get("count", 0)
+            embed.add_field(name=str(i+1) + ". " + name, value="ID: " + uid + "\nMutual Friends: " + str(mutual), inline=True)
+
+    embed.set_footer(text="WR Gen")
     await interaction.followup.send(embed=embed)
 
 # ============================================
