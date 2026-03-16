@@ -561,7 +561,7 @@ async def username_search(interaction: discord.Interaction, username: str):
         payload = {
             "doc_id": "8099807633384096",
             "operation_name": "SocialSearchQuery",
-            "variables": _json.dumps({"query_data": {"query_string": uname}}),
+            "variables": _json.dumps({"query_data": {"query_string": uname, "search_mode": "ID"}}),
             "forced_locale": "en_US",
         }
         try:
