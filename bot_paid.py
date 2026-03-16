@@ -605,28 +605,32 @@ async def username_search(interaction: discord.Interaction, username: str):
         user = exact[0]["node"]
         user_id = user.get("user_id", "N/A")
         search_name = user.get("search_name", "N/A")
-        friend_status = user.get("friend_status", "unknown").replace("_", " ")
-        pfp = user.get("profile_photo", {}).get("uri", None)
-        embed = discord.Embed(title="Oculus User Found", description="Exact match: **@" + username + "**", color=0x0085FF)
-        embed.add_field(name="Username", value="👤 " + search_name, inline=True)
-        embed.add_field(name="User ID", value="🆔 " + user_id, inline=True)
-        embed.add_field(name="Friend Status", value="🤝 " + friend_status, inline=True)
-        if pfp:
-            embed.set_thumbnail(url=pfp)
+        friend_status = user.get("friend_status", "unknown").replace("_", " ").title()
+        # Try multiple pfp fields
+        pfp = (user.get("profile_photo") or {}).get("uri") or               (user.get("pfp_for_right_rail") or {}).get("uri") or               (user.get("avatar_image") or {}).get("uri") or None
+
         followers = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "followers")
         following = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "following")
-        embed.add_field(name="Followers", value="👥 " + str(followers), inline=True)
-        embed.add_field(name="Following", value="👤 " + str(following), inline=True)
+
+        embed = discord.Embed(color=0x0085FF)
+        embed.set_author(name=search_name + "  •  @" + username)
+        embed.add_field(name="User ID", value="```" + user_id + "```", inline=False)
+        embed.add_field(name="Friend Status", value=friend_status, inline=True)
+        embed.add_field(name="Followers", value=str(followers), inline=True)
+        embed.add_field(name="Following", value=str(following), inline=True)
+        if pfp:
+            embed.set_thumbnail(url=pfp)
+        embed.set_footer(text="WR Gen")
     else:
-        embed = discord.Embed(title="Similar Users Found", description="No exact match for **" + username + "**:", color=0xFFAA00)
+        embed = discord.Embed(title="Similar Users", description="No exact match for **" + username + "**", color=0xFFAA00)
         for i, edge in enumerate(show):
             user = edge.get("node", {})
             name = user.get("search_name", "Unknown")
             uid = user.get("user_id", "Unknown")
             mutual = user.get("mutual_friends", {}).get("count", 0)
             embed.add_field(name=str(i+1) + ". " + name, value="ID: " + uid + "\nMutual Friends: " + str(mutual), inline=True)
+        embed.set_footer(text="WR Gen")
 
-    embed.set_footer(text="WR Gen")
     await interaction.followup.send(embed=embed)
 
 # ============================================
