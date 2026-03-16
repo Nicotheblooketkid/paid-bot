@@ -567,9 +567,14 @@ async def username_search(interaction: discord.Interaction, username: str):
         try:
             r = requests.post(url, data=payload, headers=headers, timeout=15)
             data = r.json()
-            edges = data.get("data", {}).get("search", {}).get("results", {}).get("edges", [])
+            # Try multiple response paths
+            edges = (
+                data.get("data", {}).get("search", {}).get("results", {}).get("edges") or
+                data.get("data", {}).get("xfb_user_search", {}).get("edges") or
+                []
+            )
             exact = [e for e in edges if e.get("node", {}).get("search_name", "").lower() == uname.lower()]
-            return {"edges": edges, "exact": exact}
+            return {"edges": edges, "exact": exact, "raw": str(data)[:300]}
         except Exception as e:
             return {"edges": [], "exact": [], "error": str(e)}
 
@@ -596,7 +601,8 @@ async def username_search(interaction: discord.Interaction, username: str):
     show = exact if exact else edges[:3]
 
     if not show:
-        embed = discord.Embed(title="No Results", description="No users found for **" + username + "**", color=0xFF0000)
+        raw = result.get("raw", "no raw")
+        embed = discord.Embed(title="No Results", description="No users found for **" + username + "**\n```" + raw + "```", color=0xFF0000)
         embed.set_footer(text="meta bot - WR")
         await interaction.followup.send(embed=embed)
         return
