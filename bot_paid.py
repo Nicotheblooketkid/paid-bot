@@ -3,11 +3,18 @@ from discord.ext import commands
 from discord import app_commands
 import json
 import os
+import sys
 import time
 import asyncio
 import requests
-from PIL import Image, ImageDraw, ImageFont
+import subprocess
 import io
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow"])
+    from PIL import Image, ImageDraw, ImageFont
 
 # ============================================
 # CONFIG
