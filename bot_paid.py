@@ -652,7 +652,6 @@ async def username_search(interaction: discord.Interaction, username: str):
 # /orion-drift-name-display
 # ============================================
 
-ORION_DRIFT_ALLOWED_USERS = {1393776676755738715, 161559455253790720}
 FONT_PATH = os.path.join(os.path.dirname(__file__), "MagistralBold.ttf")
 
 def generate_name_image(name: str) -> io.BytesIO:
@@ -695,12 +694,9 @@ def generate_name_image(name: str) -> io.BytesIO:
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def orion_drift_name_display(interaction: discord.Interaction, name: str):
-    if interaction.user.id not in ORION_DRIFT_ALLOWED_USERS:
-        await interaction.response.send_message(
-            "You don't have **access** to use this command.", ephemeral=True
-        )
+    if not (has_role(interaction.user, FREE_ROLE_ID) or has_role(interaction.user, PAID_ROLE_ID) or is_admin(interaction.user)):
+        await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
-
     await interaction.response.defer()
 
     loop = asyncio.get_event_loop()
