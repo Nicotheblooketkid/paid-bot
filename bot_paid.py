@@ -697,6 +697,9 @@ async def orion_drift_name_display(interaction: discord.Interaction, name: str):
     if not (has_role(interaction.user, FREE_ROLE_ID) or has_role(interaction.user, PAID_ROLE_ID) or is_admin(interaction.user)):
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
+    if interaction.guild and not is_admin(interaction.user) and interaction.channel_id != 1481843566727794811:
+        await interaction.response.send_message("Use this command in <#1481843566727794811>.", ephemeral=True)
+        return
     await interaction.response.defer()
 
     loop = asyncio.get_event_loop()
