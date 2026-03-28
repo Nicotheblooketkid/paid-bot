@@ -6,6 +6,8 @@ import os
 import time
 import asyncio
 import requests
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 # ============================================
 # CONFIG
@@ -638,6 +640,71 @@ async def username_search(interaction: discord.Interaction, username: str):
         embed.set_footer(text="meta bot - WR")
 
     await interaction.followup.send(embed=embed)
+
+# ============================================
+# /orion-drift-name-display
+# ============================================
+
+ORION_DRIFT_ALLOWED_USERS = {1393776676755738715, 161559455253790720}
+FONT_PATH = os.path.join(os.path.dirname(__file__), "MagistralBold.ttf")
+
+def generate_name_image(name: str) -> io.BytesIO:
+    PADDING_X = 80
+    PADDING_Y = 60
+    FONT_SIZE = 120
+
+    try:
+        font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
+    except Exception:
+        font = ImageFont.load_default()
+
+    # Measure text size
+    dummy = Image.new("RGB", (1, 1))
+    draw = ImageDraw.Draw(dummy)
+    bbox = draw.textbbox((0, 0), name, font=font)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+
+    img_w = text_w + PADDING_X * 2
+    img_h = text_h + PADDING_Y * 2
+
+    img = Image.new("RGB", (img_w, img_h), color=(0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    x = PADDING_X - bbox[0]
+    y = PADDING_Y - bbox[1]
+    draw.text((x, y), name, font=font, fill=(255, 255, 255))
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+@tree.command(
+    name="orion-drift-name-display",
+    description="Preview a name in the Orion Drift font",
+)
+@app_commands.describe(name="The name to render in the Orion Drift font")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+async def orion_drift_name_display(interaction: discord.Interaction, name: str):
+    if interaction.user.id not in ORION_DRIFT_ALLOWED_USERS:
+        await interaction.response.send_message(
+            "You don't have **access** to use this command.", ephemeral=True
+        )
+        return
+
+    await interaction.response.defer()
+
+    loop = asyncio.get_event_loop()
+    buf = await loop.run_in_executor(None, generate_name_image, name)
+
+    file = discord.File(buf, filename="orion_drift.png")
+    embed = discord.Embed(color=0x000000)
+    embed.set_image(url="attachment://orion_drift.png")
+    embed.set_footer(text=f"Orion Drift • {name}")
+
+    await interaction.followup.send(embed=embed, file=file)
 
 # ============================================
 # RUN
