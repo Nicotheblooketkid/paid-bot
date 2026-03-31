@@ -641,13 +641,48 @@ async def username_search(interaction: discord.Interaction, username: str):
         await interaction.followup.send(embed=embed)
         return
 
-    if exact:
+    # Check for duped names (2+ exact matches with same username)
+    is_dupe = len(exact) >= 2
+
+    if is_dupe:
+        embeds = []
+        chunk_size = 25
+        for chunk_start in range(0, len(exact), chunk_size):
+            chunk = exact[chunk_start:chunk_start + chunk_size]
+            part = (chunk_start // chunk_size) + 1
+            total_parts = (len(exact) + chunk_size - 1) // chunk_size
+            title = f"⚠️ DUPE DETECTED — @{username}"
+            if total_parts > 1:
+                title += f" (Part {part}/{total_parts})"
+            embed = discord.Embed(
+                title=title,
+                description=f"⚠️ **LARPS DETECTED** — **{len(exact)} accounts** found with this exact username. This name was duped.",
+                color=0xFF0000
+            )
+            for i, edge in enumerate(chunk):
+                u = edge.get("node", {})
+                uid = u.get("user_id", "N/A")
+                search_name = u.get("search_name", "N/A")
+                friend_status = u.get("friend_status", "unknown").replace("_", " ").title()
+                followers = await loop.run_in_executor(None, fetch_follow_count, token, uid, "followers")
+                following = await loop.run_in_executor(None, fetch_follow_count, token, uid, "following")
+                embed.add_field(
+                    name=f"#{chunk_start + i + 1} — {search_name}",
+                    value=f"**ID:** `{uid}`\n**Followers:** {followers} | **Following:** {following}\n**Friend Status:** {friend_status}",
+                    inline=False
+                )
+            embed.set_footer(text="meta bot - WR")
+            embeds.append(embed)
+        for embed in embeds:
+            await interaction.followup.send(embed=embed)
+    elif exact:
         user = exact[0]["node"]
         user_id = user.get("user_id", "N/A")
         search_name = user.get("search_name", "N/A")
         friend_status = user.get("friend_status", "unknown").replace("_", " ").title()
-        # Try multiple pfp fields
-        pfp = (user.get("profile_photo") or {}).get("uri") or               (user.get("pfp_for_right_rail") or {}).get("uri") or               (user.get("avatar_image") or {}).get("uri") or None
+        pfp = (user.get("profile_photo") or {}).get("uri") or \
+              (user.get("pfp_for_right_rail") or {}).get("uri") or \
+              (user.get("avatar_image") or {}).get("uri") or None
 
         followers = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "followers")
         following = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "following")
@@ -661,6 +696,7 @@ async def username_search(interaction: discord.Interaction, username: str):
         if pfp:
             embed.set_thumbnail(url=pfp)
         embed.set_footer(text="meta bot - WR")
+        await interaction.followup.send(embed=embed)
     else:
         embed = discord.Embed(title="Similar Users", description="No exact match for **" + username + "**", color=0xFFAA00)
         for i, edge in enumerate(show):
@@ -670,8 +706,7 @@ async def username_search(interaction: discord.Interaction, username: str):
             mutual = user.get("mutual_friends", {}).get("count", 0)
             embed.add_field(name=str(i+1) + ". " + name, value="ID: " + uid + "\nMutual Friends: " + str(mutual), inline=True)
         embed.set_footer(text="meta bot - WR")
-
-    await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed)
 
 # ============================================
 # /orion-drift-name-display
