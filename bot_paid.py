@@ -651,19 +651,18 @@ async def username_search(interaction: discord.Interaction, username: str):
             chunk = exact[chunk_start:chunk_start + chunk_size]
             part = (chunk_start // chunk_size) + 1
             total_parts = (len(exact) + chunk_size - 1) // chunk_size
-            title = f"⚠️ DUPE DETECTED — @{username}"
+            title = f"💩 LARPS DETECTED — @{username}"
             if total_parts > 1:
                 title += f" (Part {part}/{total_parts})"
-            embed = discord.Embed(
-                title=title,
-                description=f"⚠️ **LARPS DETECTED** — **{len(exact)} accounts** found with this exact username. This name was duped.",
-                color=0xFF0000
-            )
+            embed = discord.Embed(title=title, color=0x0085FF)
             for i, edge in enumerate(chunk):
                 u = edge.get("node", {})
                 uid = u.get("user_id", "N/A")
                 search_name = u.get("search_name", "N/A")
                 friend_status = u.get("friend_status", "unknown").replace("_", " ").title()
+                pfp = (u.get("profile_photo") or {}).get("uri") or \
+                      (u.get("pfp_for_right_rail") or {}).get("uri") or \
+                      (u.get("avatar_image") or {}).get("uri") or None
                 followers = await loop.run_in_executor(None, fetch_follow_count, token, uid, "followers")
                 following = await loop.run_in_executor(None, fetch_follow_count, token, uid, "following")
                 embed.add_field(
@@ -671,6 +670,8 @@ async def username_search(interaction: discord.Interaction, username: str):
                     value=f"**ID:** `{uid}`\n**Followers:** {followers} | **Following:** {following}\n**Friend Status:** {friend_status}",
                     inline=False
                 )
+                if chunk_start + i == 0 and pfp:
+                    embed.set_thumbnail(url=pfp)
             embed.set_footer(text="meta bot - WR")
             embeds.append(embed)
         for embed in embeds:
