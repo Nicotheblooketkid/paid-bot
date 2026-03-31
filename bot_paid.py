@@ -645,36 +645,32 @@ async def username_search(interaction: discord.Interaction, username: str):
     is_dupe = len(exact) >= 2
 
     if is_dupe:
-        embeds = []
-        chunk_size = 25
-        for chunk_start in range(0, len(exact), chunk_size):
-            chunk = exact[chunk_start:chunk_start + chunk_size]
-            part = (chunk_start // chunk_size) + 1
-            total_parts = (len(exact) + chunk_size - 1) // chunk_size
-            title = f"💩 LARPS DETECTED — @{username}"
-            if total_parts > 1:
-                title += f" (Part {part}/{total_parts})"
-            embed = discord.Embed(title=title, color=0x0085FF)
-            for i, edge in enumerate(chunk):
-                u = edge.get("node", {})
-                uid = u.get("user_id", "N/A")
-                search_name = u.get("search_name", "N/A")
-                friend_status = u.get("friend_status", "unknown").replace("_", " ").title()
-                pfp = (u.get("profile_photo") or {}).get("uri") or \
-                      (u.get("pfp_for_right_rail") or {}).get("uri") or \
-                      (u.get("avatar_image") or {}).get("uri") or None
-                followers = await loop.run_in_executor(None, fetch_follow_count, token, uid, "followers")
-                following = await loop.run_in_executor(None, fetch_follow_count, token, uid, "following")
-                embed.add_field(
-                    name=f"#{chunk_start + i + 1} — {search_name}",
-                    value=f"**ID:** `{uid}`\n**Followers:** {followers} | **Following:** {following}\n**Friend Status:** {friend_status}",
-                    inline=False
-                )
-                if chunk_start + i == 0 and pfp:
-                    embed.set_thumbnail(url=pfp)
+        header = discord.Embed(
+            title=f"💩 DUPE LARP DETECTED — @{username}",
+            description=f"**{len(exact)} accounts** found with this exact username.",
+            color=0x0085FF
+        )
+        header.set_footer(text="meta bot - WR")
+        await interaction.followup.send(embed=header)
+        for i, edge in enumerate(exact):
+            u = edge.get("node", {})
+            uid = u.get("user_id", "N/A")
+            search_name = u.get("search_name", "N/A")
+            friend_status = u.get("friend_status", "unknown").replace("_", " ").title()
+            pfp = (u.get("profile_photo") or {}).get("uri") or \
+                  (u.get("pfp_for_right_rail") or {}).get("uri") or \
+                  (u.get("avatar_image") or {}).get("uri") or None
+            followers = await loop.run_in_executor(None, fetch_follow_count, token, uid, "followers")
+            following = await loop.run_in_executor(None, fetch_follow_count, token, uid, "following")
+            embed = discord.Embed(color=0x0085FF)
+            embed.set_author(name=f"#{i+1} — {search_name}  •  @{username}")
+            embed.add_field(name="User ID", value=f"`{uid}`", inline=False)
+            embed.add_field(name="Followers", value=str(followers), inline=True)
+            embed.add_field(name="Following", value=str(following), inline=True)
+            embed.add_field(name="Friend Status", value=friend_status, inline=True)
+            if pfp:
+                embed.set_thumbnail(url=pfp)
             embed.set_footer(text="meta bot - WR")
-            embeds.append(embed)
-        for embed in embeds:
             await interaction.followup.send(embed=embed)
     elif exact:
         user = exact[0]["node"]
