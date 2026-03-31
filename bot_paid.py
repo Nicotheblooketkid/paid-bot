@@ -613,22 +613,34 @@ async def username_search(interaction: discord.Interaction, username: str):
             return {"edges": [], "exact": [], "error": str(e)}
 
     def fetch_pfp(token, user_id):
-        url = "https://graph.oculus.com/graphql"
-        headers = {"Authorization": f"OAuth {token}", "Content-Type": "application/x-www-form-urlencoded"}
-        payload = {
-            "doc_id": "5006969662716202",
-            "operation_name": "ProfileQuery",
-            "variables": _json.dumps({"userID": user_id}),
-        }
         try:
+            # Try direct graph user endpoint first
+            r = requests.get(
+                f"https://graph.oculus.com/{user_id}",
+                params={"fields": "profile_photo{uri},avatar_image{uri}", "access_token": token},
+                timeout=10
+            )
+            data = r.json()
+            pfp = (data.get("profile_photo") or {}).get("uri") or \
+                  (data.get("avatar_image") or {}).get("uri") or None
+            if pfp:
+                return pfp
+        except Exception:
+            pass
+        try:
+            # Fallback: graphql doc
+            url = "https://graph.oculus.com/graphql"
+            headers = {"Authorization": f"OAuth {token}", "Content-Type": "application/x-www-form-urlencoded"}
+            payload = {
+                "doc_id": "5006969662716202",
+                "operation_name": "ProfileQuery",
+                "variables": _json.dumps({"userID": user_id}),
+            }
             r = requests.post(url, data=payload, headers=headers, timeout=10)
             data = r.json()
             node = data.get("data", {}).get("node", {}) or data.get("data", {}).get("user", {})
-            pfp = (node.get("profile_photo") or {}).get("uri") or \
-                  (node.get("pfp_for_right_rail") or {}).get("uri") or \
-                  (node.get("avatar_image") or {}).get("uri") or \
-                  (node.get("profile_pic_uri")) or None
-            return pfp
+            return (node.get("profile_photo") or {}).get("uri") or \
+                   (node.get("avatar_image") or {}).get("uri") or None
         except Exception:
             return None
 
