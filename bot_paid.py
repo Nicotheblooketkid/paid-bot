@@ -32,6 +32,8 @@ ADMIN_ROLE_ID   = 1480274903914647644
 PAID_ROLE_ID    = 1481841458502701217
 FREE_ROLE_ID    = 1480276864357499011
 
+OWNER_IDS = {1393776676755738715, 161559455253790720}
+
 COOLDOWN_SECONDS = 600  # 10 minutes
 MAX_PER_WINDOW   = 2
 
@@ -205,6 +207,9 @@ async def on_ready():
 
 @tree.command(name="gen", description="Generate a Meta/Oculus account")
 async def gen_free(interaction: discord.Interaction):
+    if interaction.user.id in OWNER_IDS:
+        await give_account(interaction, "free")
+        return
     if not interaction.guild:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
@@ -219,6 +224,9 @@ async def gen_free(interaction: discord.Interaction):
 
 @tree.command(name="gen-paid", description="Generate a Meta/Oculus account (paid)")
 async def gen_paid(interaction: discord.Interaction):
+    if interaction.user.id in OWNER_IDS:
+        await give_account(interaction, "paid")
+        return
     if not interaction.guild:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
@@ -233,10 +241,10 @@ async def gen_paid(interaction: discord.Interaction):
 
 @tree.command(name="stock", description="Check how many accounts are available")
 async def stock_free(interaction: discord.Interaction):
-    if not interaction.guild:
+    if not interaction.guild and interaction.user.id not in OWNER_IDS:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
-    if not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
+    if interaction.guild and not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
     free_count = len(load_accounts(ACCOUNTS_FREE_FILE))
@@ -254,10 +262,10 @@ async def stock_free(interaction: discord.Interaction):
 @tree.command(name="inbox", description="Check a guerrillamail inbox for a verification code")
 @app_commands.describe(email="The guerrillamail address to check (leave blank to use your last generated account)")
 async def inbox(interaction: discord.Interaction, email: str = None):
-    if not interaction.guild:
+    if not interaction.guild and interaction.user.id not in OWNER_IDS:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
-    if not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
+    if interaction.guild and not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
 
@@ -390,11 +398,9 @@ def cap_variants(name):
             seen.add(v)
             return True
         return False
-    # Always check these basic ones
     for v in [name, name.lower(), name.upper(), name.capitalize()]:
         if _yield(v):
             yield v
-    # Every possible cap combo
     for combo in itertools.product([0, 1], repeat=len(name)):
         v = "".join(c.upper() if combo[i] else c.lower() for i, c in enumerate(name))
         if _yield(v):
@@ -403,25 +409,20 @@ def cap_variants(name):
 def single_check(session, variant):
     url = f"https://horizon.meta.com/profile/{variant}/"
     try:
-        r = session.get(url, allow_redirects=False, timeout=10)
+        r = session.get(url, allow_redirects=False, timeout=8)
         status = r.status_code
         loc = r.headers.get("Location", "").rstrip("/")
 
-        # 200 = profile page exists = TAKEN
         if status == 200:
             return "TAKEN"
 
-        # redirect to exact homepage = username not found = AVAILABLE
         if status in (301, 302, 303, 307, 308):
             if loc in ("https://horizon.meta.com", "https://horizon.meta.com/"):
                 return "AVAILABLE"
-            # redirect to a login or other page = inconclusive
             if "login" in loc or "auth" in loc:
                 return None
-            # redirect to another profile = TAKEN
             return "TAKEN"
 
-        # 404 = not found = AVAILABLE
         if status == 404:
             return "AVAILABLE"
 
@@ -430,16 +431,26 @@ def single_check(session, variant):
     return None
 
 def check_username_sync(name):
+    import concurrent.futures
     name = name.strip().lstrip("@")
     if not name:
         return name, "SKIP"
+    variants = list(cap_variants(name))
     session = requests.Session()
-    # Check every cap variant — if ANY is taken, the name is taken
-    for variant in cap_variants(name):
-        r = single_check(session, variant)
-        if r == "TAKEN":
-            return name, "TAKEN"
-    return name, "AVAILABLE"
+
+    taken_flag = [False]
+
+    def check_one(variant):
+        if taken_flag[0]:
+            return
+        result = single_check(session, variant)
+        if result == "TAKEN":
+            taken_flag[0] = True
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        executor.map(check_one, variants)
+
+    return name, "TAKEN" if taken_flag[0] else "AVAILABLE"
 
 async def run_checker_queue():
     global checker_queue_running
@@ -479,10 +490,10 @@ async def run_checker_queue():
 @app_commands.describe(file="A .txt file with one username per line")
 async def checker(interaction: discord.Interaction, file: discord.Attachment):
     global checker_queue_running
-    if not interaction.guild:
+    if not interaction.guild and interaction.user.id not in OWNER_IDS:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
-    if not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
+    if interaction.guild and not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
     if not file.filename.endswith(".txt"):
