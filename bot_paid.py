@@ -549,7 +549,8 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
 # /username-search  (paid + admin only)
 # ============================================
 
-ACCESS_TOKENS = ['FRLAeihUZB99ecUiILN8hJz9Xtv6mVZC7zmwmxE6RXtUV0UEM9SQ5r2KTAfje4BWpTviJTh5YygkLmybSCCCzBgZAHDdKIrDe3S4HCMn7mZAsspgTtQMv8t1JDIbZC1n7ZBmaZCUmGZAozbvCnEbqxqPGQmJZAW3DvIKIWWm1SypYRMZD',
+ACCESS_TOKENS = ['FRLAeihUZB99ecUiILN8hJz9Xtv6mVZC7zmwmxE6RXtUV0UEM9SQ5r2KTAfje4BWpTviJTh5YygkLmybSCCCzBgZAHDdKIrDe3S4HCMn7mZAsspgTtQMv8t1JDIbZC1n7ZBmaZCUmGZAozbvCnEbqxqPGQmJZAW3DvIKIWWm1SypYRMZD']
+
 @tree.command(name="username-search", description="Search for a Meta/Oculus username using the API")
 @app_commands.describe(username="The username to search for")
 async def username_search(interaction: discord.Interaction, username: str):
