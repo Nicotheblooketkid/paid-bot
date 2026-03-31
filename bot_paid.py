@@ -666,7 +666,7 @@ async def username_search(interaction: discord.Interaction, username: str):
 
     if is_dupe:
         header = discord.Embed(
-            title=f"💩 DUPE LARP DETECTED — @{username}",
+            title=f"larps detected @{username}",
             description=f"**{len(exact)} accounts** found with this exact username.",
             color=0x0085FF
         )
