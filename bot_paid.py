@@ -612,6 +612,26 @@ async def username_search(interaction: discord.Interaction, username: str):
         except Exception as e:
             return {"edges": [], "exact": [], "error": str(e)}
 
+    def fetch_pfp(token, user_id):
+        url = "https://graph.oculus.com/graphql"
+        headers = {"Authorization": f"OAuth {token}", "Content-Type": "application/x-www-form-urlencoded"}
+        payload = {
+            "doc_id": "5006969662716202",
+            "operation_name": "ProfileQuery",
+            "variables": _json.dumps({"userID": user_id}),
+        }
+        try:
+            r = requests.post(url, data=payload, headers=headers, timeout=10)
+            data = r.json()
+            node = data.get("data", {}).get("node", {}) or data.get("data", {}).get("user", {})
+            pfp = (node.get("profile_photo") or {}).get("uri") or \
+                  (node.get("pfp_for_right_rail") or {}).get("uri") or \
+                  (node.get("avatar_image") or {}).get("uri") or \
+                  (node.get("profile_pic_uri")) or None
+            return pfp
+        except Exception:
+            return None
+
     def fetch_follow_count(token, user_id, follow_type):
         url = "https://graph.oculus.com/graphql"
         headers = {"Authorization": f"OAuth {token}", "Content-Type": "application/x-www-form-urlencoded"}
@@ -660,6 +680,8 @@ async def username_search(interaction: discord.Interaction, username: str):
             pfp = (u.get("profile_photo") or {}).get("uri") or \
                   (u.get("pfp_for_right_rail") or {}).get("uri") or \
                   (u.get("avatar_image") or {}).get("uri") or None
+            if not pfp:
+                pfp = await loop.run_in_executor(None, fetch_pfp, token, uid)
             followers = await loop.run_in_executor(None, fetch_follow_count, token, uid, "followers")
             following = await loop.run_in_executor(None, fetch_follow_count, token, uid, "following")
             embed = discord.Embed(color=0x0085FF)
@@ -680,6 +702,8 @@ async def username_search(interaction: discord.Interaction, username: str):
         pfp = (user.get("profile_photo") or {}).get("uri") or \
               (user.get("pfp_for_right_rail") or {}).get("uri") or \
               (user.get("avatar_image") or {}).get("uri") or None
+        if not pfp:
+            pfp = await loop.run_in_executor(None, fetch_pfp, token, user_id)
 
         followers = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "followers")
         following = await loop.run_in_executor(None, fetch_follow_count, token, user_id, "following")
