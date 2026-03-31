@@ -549,8 +549,7 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
 # /username-search  (paid + admin only)
 # ============================================
 
-ACCESS_TOKENS = ['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']
-
+ACCESS_TOKENS = ['FRLAeihUZB99ecUiILN8hJz9Xtv6mVZC7zmwmxE6RXtUV0UEM9SQ5r2KTAfje4BWpTviJTh5YygkLmybSCCCzBgZAHDdKIrDe3S4HCMn7mZAsspgTtQMv8t1JDIbZC1n7ZBmaZCUmGZAozbvCnEbqxqPGQmJZAW3DvIKIWWm1SypYRMZD',
 @tree.command(name="username-search", description="Search for a Meta/Oculus username using the API")
 @app_commands.describe(username="The username to search for")
 async def username_search(interaction: discord.Interaction, username: str):
@@ -693,12 +692,18 @@ def generate_name_image(name: str) -> io.BytesIO:
 @app_commands.describe(name="The name to render in the Orion Drift font")
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+ORION_DRIFT_ALLOWED_USERS = {1393776676755738715, 161559455253790720}
+
 async def orion_drift_name_display(interaction: discord.Interaction, name: str):
-    if not (has_role(interaction.user, FREE_ROLE_ID) or has_role(interaction.user, PAID_ROLE_ID) or is_admin(interaction.user)):
+    # Allowed users can use it anywhere — DMs, other servers, anywhere
+    if interaction.user.id in ORION_DRIFT_ALLOWED_USERS:
+        pass
+    elif interaction.guild and (has_role(interaction.user, FREE_ROLE_ID) or has_role(interaction.user, PAID_ROLE_ID) or is_admin(interaction.user)):
+        if not is_admin(interaction.user) and interaction.channel_id != 1481843566727794811:
+            await interaction.response.send_message("Use this command in <#1481843566727794811>.", ephemeral=True)
+            return
+    else:
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
-        return
-    if interaction.guild and not is_admin(interaction.user) and interaction.channel_id != 1481843566727794811:
-        await interaction.response.send_message("Use this command in <#1481843566727794811>.", ephemeral=True)
         return
     await interaction.response.defer()
 
