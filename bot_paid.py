@@ -206,6 +206,8 @@ async def on_ready():
 # ============================================
 
 @tree.command(name="gen", description="Generate a Meta/Oculus account")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def gen_free(interaction: discord.Interaction):
     if interaction.user.id in OWNER_IDS:
         await give_account(interaction, "free")
@@ -223,6 +225,8 @@ async def gen_free(interaction: discord.Interaction):
 # ============================================
 
 @tree.command(name="gen-paid", description="Generate a Meta/Oculus account (paid)")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def gen_paid(interaction: discord.Interaction):
     if interaction.user.id in OWNER_IDS:
         await give_account(interaction, "paid")
@@ -240,6 +244,8 @@ async def gen_paid(interaction: discord.Interaction):
 # ============================================
 
 @tree.command(name="stock", description="Check how many accounts are available")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def stock_free(interaction: discord.Interaction):
     if not interaction.guild and interaction.user.id not in OWNER_IDS:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
@@ -260,6 +266,8 @@ async def stock_free(interaction: discord.Interaction):
 # ============================================
 
 @tree.command(name="inbox", description="Check a guerrillamail inbox for a verification code")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(email="The guerrillamail address to check (leave blank to use your last generated account)")
 async def inbox(interaction: discord.Interaction, email: str = None):
     if not interaction.guild and interaction.user.id not in OWNER_IDS:
@@ -350,12 +358,14 @@ async def inbox(interaction: discord.Interaction, email: str = None):
 # ============================================
 
 @tree.command(name="addaccounts", description="[Admin] Add accounts to stock")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(tier="free or paid", accounts="email:password lines")
 async def addaccounts(interaction: discord.Interaction, tier: str, accounts: str):
-    if not interaction.guild:
+    if not interaction.guild and interaction.user.id not in OWNER_IDS:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
-    if not is_admin(interaction.user):
+    if interaction.guild and not is_admin(interaction.user):
         await interaction.response.send_message("You don't have **permission** to use this.", ephemeral=True)
         return
 
@@ -487,6 +497,8 @@ async def run_checker_queue():
 # ============================================
 
 @tree.command(name="checker", description="Check a list of usernames for availability on Meta/Horizon")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(file="A .txt file with one username per line")
 async def checker(interaction: discord.Interaction, file: discord.Attachment):
     global checker_queue_running
@@ -563,12 +575,14 @@ async def checker(interaction: discord.Interaction, file: discord.Attachment):
 ACCESS_TOKENS = ['FRLAeihUZB99ecUiILN8hJz9Xtv6mVZC7zmwmxE6RXtUV0UEM9SQ5r2KTAfje4BWpTviJTh5YygkLmybSCCCzBgZAHDdKIrDe3S4HCMn7mZAsspgTtQMv8t1JDIbZC1n7ZBmaZCUmGZAozbvCnEbqxqPGQmJZAW3DvIKIWWm1SypYRMZD']
 
 @tree.command(name="username-search", description="Search for a Meta/Oculus username using the API")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(username="The username to search for")
 async def username_search(interaction: discord.Interaction, username: str):
-    if not interaction.guild:
+    if not interaction.guild and interaction.user.id not in OWNER_IDS:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
-    if not (is_paid(interaction.user) or is_admin(interaction.user)):
+    if interaction.guild and not (is_paid(interaction.user) or is_admin(interaction.user)):
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=False)
