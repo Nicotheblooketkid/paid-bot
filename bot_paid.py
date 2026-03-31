@@ -686,6 +686,8 @@ def generate_name_image(name: str) -> io.BytesIO:
     buf.seek(0)
     return buf
 
+ORION_DRIFT_ALLOWED_USERS = {1393776676755738715, 161559455253790720}
+
 @tree.command(
     name="orion-drift-name-display",
     description="Preview a name in the Orion Drift font",
@@ -693,8 +695,6 @@ def generate_name_image(name: str) -> io.BytesIO:
 @app_commands.describe(name="The name to render in the Orion Drift font")
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-ORION_DRIFT_ALLOWED_USERS = {1393776676755738715, 161559455253790720}
-
 async def orion_drift_name_display(interaction: discord.Interaction, name: str):
     # Allowed users can use it anywhere — DMs, other servers, anywhere
     if interaction.user.id in ORION_DRIFT_ALLOWED_USERS:
