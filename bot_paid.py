@@ -579,10 +579,12 @@ ACCESS_TOKENS = ['FRLAeihUZB99ecUiILN8hJz9Xtv6mVZC7zmwmxE6RXtUV0UEM9SQ5r2KTAfje4
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(username="The username to search for")
 async def username_search(interaction: discord.Interaction, username: str):
-    if not interaction.guild and interaction.user.id not in OWNER_IDS:
+    if interaction.user.id in OWNER_IDS:
+        pass
+    elif not interaction.guild:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
-    if interaction.guild and not (is_paid(interaction.user) or is_admin(interaction.user)):
+    elif not (is_paid(interaction.user) or is_admin(interaction.user)):
         await interaction.response.send_message("You don't have **access** to use this.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=False)
