@@ -33,6 +33,10 @@ PAID_ROLE_ID    = 1481841458502701217
 FREE_ROLE_ID    = 1480276864357499011
 
 OWNER_IDS = {1393776676755738715, 161559455253790720, 1325282286563754068}
+OWNER_IDS_STR = {"1393776676755738715", "161559455253790720", "1325282286563754068"}
+
+def is_owner(user):
+    return user.id in OWNER_IDS or str(user.id) in OWNER_IDS_STR
 
 COOLDOWN_SECONDS = 600  # 10 minutes
 MAX_PER_WINDOW   = 2
@@ -209,7 +213,7 @@ async def on_ready():
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def gen_free(interaction: discord.Interaction):
-    if interaction.user.id in OWNER_IDS:
+    if is_owner(interaction.user):
         await give_account(interaction, "free")
         return
     if not interaction.guild:
@@ -228,7 +232,7 @@ async def gen_free(interaction: discord.Interaction):
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def gen_paid(interaction: discord.Interaction):
-    if interaction.user.id in OWNER_IDS:
+    if is_owner(interaction.user):
         await give_account(interaction, "paid")
         return
     if not interaction.guild:
@@ -247,7 +251,7 @@ async def gen_paid(interaction: discord.Interaction):
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def stock_free(interaction: discord.Interaction):
-    if not interaction.guild and interaction.user.id not in OWNER_IDS:
+    if not interaction.guild and not is_owner(interaction.user):
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
     if interaction.guild and not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
@@ -270,7 +274,7 @@ async def stock_free(interaction: discord.Interaction):
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(email="The guerrillamail address to check (leave blank to use your last generated account)")
 async def inbox(interaction: discord.Interaction, email: str = None):
-    if not interaction.guild and interaction.user.id not in OWNER_IDS:
+    if not interaction.guild and not is_owner(interaction.user):
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
     if interaction.guild and not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
@@ -362,7 +366,7 @@ async def inbox(interaction: discord.Interaction, email: str = None):
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(tier="free or paid", accounts="email:password lines")
 async def addaccounts(interaction: discord.Interaction, tier: str, accounts: str):
-    if not interaction.guild and interaction.user.id not in OWNER_IDS:
+    if not interaction.guild and not is_owner(interaction.user):
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
     if interaction.guild and not is_admin(interaction.user):
@@ -502,7 +506,7 @@ async def run_checker_queue():
 @app_commands.describe(file="A .txt file with one username per line")
 async def checker(interaction: discord.Interaction, file: discord.Attachment):
     global checker_queue_running
-    if not interaction.guild and interaction.user.id not in OWNER_IDS:
+    if not interaction.guild and not is_owner(interaction.user):
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
         return
     if interaction.guild and not (is_free(interaction.user) or is_paid(interaction.user) or is_admin(interaction.user)):
@@ -579,7 +583,7 @@ ACCESS_TOKENS = ['FRLAeihUZB99ecUiILN8hJz9Xtv6mVZC7zmwmxE6RXtUV0UEM9SQ5r2KTAfje4
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(username="The username to search for")
 async def username_search(interaction: discord.Interaction, username: str):
-    if interaction.user.id in OWNER_IDS:
+    if is_owner(interaction.user):
         pass
     elif not interaction.guild:
         await interaction.response.send_message("Use this command in the server.", ephemeral=True)
